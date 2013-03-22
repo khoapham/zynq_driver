@@ -23,6 +23,7 @@ static struct file_operations vf_fops = {
 	read	= vf_read,
 	write	= vf_write,
 	release	= vf_close,
+	mmap	= vf_mmap,
 };
 
 static void vf_hardware_init (void) {}
