@@ -26,6 +26,28 @@ static struct file_operations vf_fops = {
 	mmap	= vf_mmap,
 };
 
+static struct vm_operations_struct vf_mmap_vm_ops = {
+	open	= vf_vma_open,
+	close	= vf_vma_close,
+};
+
+void vf_vma_open (struct vm_area_struct *vma) {
+	printk(KERN_INFO "VF VMA open, virt %lx, phys %lx\n\r", vma->vm_start, vma->vm_pgoff << PAGE_SHIFT);
+}
+
+void vf_vma_close (struct vm_area_struct *vma) {
+	printk(KERN_INFO "VF VMA close.\n\r");
+}
+
+static int vf_mmap (struct file *file, struct vm_area_struct *vma) {
+	if (remap_pfn_range(vma, vma->vm_start, vma->vm_pgoff, vma->vm_end - vma->vm_start, vma->vm_page_prot))
+		return -EAGAIN;
+
+	vma->vm_ops = &vf_mmap_vm_ops;
+	vf_vma_open(vma);
+	return 0;
+}
+
 static void vf_hardware_init (void) {}
 static void control () {}
 static int vf_open (struct inode *inode, struct file *file) {
