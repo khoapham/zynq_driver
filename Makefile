@@ -1,4 +1,4 @@
-obj-m += test.o
+obj-m += vf_driver.o
 
 all:
 	make -C /home/khoa/Downloads/linux-xlnx M=$(PWD) modules
