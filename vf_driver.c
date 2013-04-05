@@ -5,7 +5,7 @@
 #include <linux/errno.h>
 #include <linux/timer.h>
 #include <linux/delay.h>
-#include <linux/config.h>
+//#include <linux/config.h>
 #include <linux/mm.h>
 #include <linux/init.h>
 #include <linux/ioport.h>
@@ -13,10 +13,20 @@
 #include <asm/io.h>
 #include <asm/irq.h>
 #include <asm/system.h>
-#include <asm/hardware.h>
+//#include <asm/hardware.h>
 #include <asm/uaccess.h>
 
 #define VF_MAJOR 200
+
+
+void vf_vma_open (struct vm_area_struct *vma);
+void vf_vma_close (struct vm_area_struct *vma);
+static void vf_hardware_init (void);
+static int vf_mmap (struct file *file, struct vm_area_struct *vma);
+static int vf_open (struct inode *inode, struct file *file);
+static int vf_close (struct inode *inode, struct file *file);
+static int vf_read (struct file *file, char *buf, size_t count, loff_t *ppos);
+static int vf_write (struct file *file, const char *buf, size_t count, loff_t *ppos);
 
 static struct file_operations vf_fops = {
 	open	= vf_open,
@@ -49,7 +59,7 @@ static int vf_mmap (struct file *file, struct vm_area_struct *vma) {
 }
 
 static void vf_hardware_init (void) {}
-static void control () {}
+//static void control () {}
 static int vf_open (struct inode *inode, struct file *file) {
 	printk(KERN_INFO "vf opened\n\r");
 	return 0;
