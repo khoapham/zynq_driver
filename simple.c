@@ -17,7 +17,10 @@
 //#include <asm/hardware.h>
 #include <asm/uaccess.h>
 
-#define VF_MAJOR 200
+//#define VF_MAJOR 200
+
+static int vf_count = 1;
+static dev_t vf_dev = MKDEV(202, 128);
 
 static int vf_open (struct inode *inode, struct file *file);
 static int vf_close (struct inode *inode, struct file *file);
@@ -39,7 +42,8 @@ static int vf_close (struct inode *inode, struct file *file) {
 
 static int __init vf_init (void) {
 	printk(KERN_INFO "Registering the vf\n\r");
-	if(register_chrdev(VF_MAJOR, "vfdriver", &vf_fops)){
+//	if(register_chrdev(VF_MAJOR, "vfdriver", &vf_fops)){
+	if (register_chrdev_region(vf_dev, vf_count, "vf-driver")) {
 		printk(KERN_INFO "register the vf-driver error\n\r");
 		goto fail_register_chrdev;
 	}
@@ -52,7 +56,8 @@ static int __init vf_init (void) {
 }
 
 static void __exit vf_cleanup (void) {
-	unregister_chrdev(VF_MAJOR, "vfdriver");
+//	unregister_chrdev(VF_MAJOR, "vfdriver");
+	unregister_chrdev_region(vf_dev, vf_count);
 	return;
 }
 
