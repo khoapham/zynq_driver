@@ -3,7 +3,6 @@
 #include <linux/sched.h>
 #include <linux/interrupt.h>
 #include <linux/errno.h>
-#include <linux/timer.h>
 #include <linux/delay.h>
 #include <linux/mm.h>
 #include <linux/init.h>
@@ -12,13 +11,14 @@
 #include <linux/module.h>
 #include <linux/kernel.h>
 #include <linux/cdev.h>
+#include <linux/slab.h>
 
 #include <asm/io.h>
 #include <asm/irq.h>
 #include <asm/system.h>
 #include <asm/uaccess.h>
 
-#define VF_PHYS 0x12345678
+//#define VF_PHYS 0x12345678
 
 static void *vf_buf;
 static int vf_bufsize = 8192;
@@ -89,8 +89,8 @@ static int vf_close (struct inode *inode, struct file *file) {
 static int __init vf_init (void) {
 	int err;
 
-	vf_buf = ioremap(VF_PHYS, vf_bufsize);
-
+//	vf_buf = ioremap(VF_PHYS, vf_bufsize);
+	vf_buf = kmalloc(vf_bufsize, GFP_KERNEL);
 	if (!vf_buf) {
 		err = -ENOMEM;
 		goto err_exit;
