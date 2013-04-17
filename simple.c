@@ -10,7 +10,9 @@
 #include <linux/init.h>
 #include <linux/ioport.h>
 #include <linux/fs.h>
-
+#include <linux/module.h>
+#include <linux/kernel.h>
+#include <linux/cdev.h>
 #include <asm/io.h>
 #include <asm/irq.h>
 #include <asm/system.h>
@@ -21,6 +23,8 @@
 
 static int vf_count = 1;
 static dev_t vf_dev = MKDEV(202, 128);
+
+static struct cdev vf_cdev;
 
 static int vf_open (struct inode *inode, struct file *file);
 static int vf_close (struct inode *inode, struct file *file);
@@ -47,6 +51,13 @@ static int __init vf_init (void) {
 		printk(KERN_INFO "register the vf-driver error\n\r");
 		goto fail_register_chrdev;
 	}
+
+	cdev_init(&vf_cdev, &vf_fops);
+
+	if (cdev_add(&vf_cdev, vf_dev, vf_count)) {
+		printk(KERN_INFO "add the vf-driver character device error\n\r");
+	}
+
 	printk(KERN_INFO "vf-driver was registered\n\r");
 	return 0;
 
@@ -57,6 +68,7 @@ static int __init vf_init (void) {
 
 static void __exit vf_cleanup (void) {
 //	unregister_chrdev(VF_MAJOR, "vfdriver");
+	cdev_del(&vf_cdev);
 	unregister_chrdev_region(vf_dev, vf_count);
 	return;
 }
