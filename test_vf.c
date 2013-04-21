@@ -12,7 +12,7 @@ int main(int argc, char **argv) {
 		printf("open /dev/vf-driver failed\n");
 		exit (-1);
 	} else printf("open /dev/vf-driver successfully\n");
-	temp1 = 'E';
+	temp1 = '1';
 	i = write(fd, temp1, 1);
 	printf("number of char write = %d\n", i);
 
