@@ -28,14 +28,14 @@ static dev_t vf_dev = MKDEV(202, 128);
 
 static struct cdev vf_cdev;
 
-static int vf_open (struct inode *inode, struct file *file);
-static int vf_close (struct inode *inode, struct file *file);
+//static int vf_open (struct inode *inode, struct file *file);
+//static int vf_close (struct inode *inode, struct file *file);
 static ssize_t vf_read(struct file *file, char __user *buf, size_t count, loff_t *ppos);
 static ssize_t vf_write(struct file *file, const char __user *buf, size_t count, loff_t *ppos);
 
 static struct file_operations vf_fops = {
-	.open	= vf_open,
-	.release= vf_close,
+//	.open	= vf_open,
+//	.release= vf_close,
 	.read	= vf_read,
 	.write	= vf_write,
 };
@@ -76,15 +76,15 @@ static ssize_t vf_write(struct file *file, const char __user *buf, size_t count,
 	}
 }
 
-static int vf_open (struct inode *inode, struct file *file) {
-	printk(KERN_INFO "vf opened\n\r");
-	return 0;
-}
+//static int vf_open (struct inode *inode, struct file *file) {
+//	printk(KERN_INFO "vf opened\n\r");
+//	return 0;
+//}
 
-static int vf_close (struct inode *inode, struct file *file) {
-	printk(KERN_INFO "vf closed\n\r");
-	return 0;
-}
+//static int vf_close (struct inode *inode, struct file *file) {
+//	printk(KERN_INFO "vf closed\n\r");
+//	return 0;
+//}
 
 static int __init vf_init (void) {
 	int err;
