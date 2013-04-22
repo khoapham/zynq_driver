@@ -18,7 +18,7 @@
 #include <asm/system.h>
 #include <asm/uaccess.h>
 
-#define VF_PHYS 0x70400000
+//#define VF_PHYS 0x70400000
 
 static void *vf_buf;
 static int vf_bufsize = 8192;
@@ -92,7 +92,7 @@ static int vf_mmap(struct file *file, struct vm_area_struct *vma) {
 	int size;
 	size = vma->vm_end - vma->vm_start;
 
-	if (remap_pfn_range(vma, vma->vm_start, VF_PHYS >> PAGE_SHIFT, size, vma->vm_page_prot)) return -EAGAIN;
+	if (remap_pfn_range(vma, vma->vm_start, vma->vm_pgoff, size, vma->vm_page_prot)) return -EAGAIN;
 
 	return 0;
 }
