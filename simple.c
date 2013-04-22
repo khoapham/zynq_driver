@@ -18,7 +18,7 @@
 #include <asm/system.h>
 #include <asm/uaccess.h>
 
-//#define VF_PHYS 0x12345678
+#define VF_PHYS 0x70400000
 
 static void *vf_buf;
 static int vf_bufsize = 8192;
@@ -28,16 +28,18 @@ static dev_t vf_dev = MKDEV(202, 128);
 
 static struct cdev vf_cdev;
 
-//static int vf_open (struct inode *inode, struct file *file);
-//static int vf_close (struct inode *inode, struct file *file);
+static int vf_open (struct inode *inode, struct file *file);
+static int vf_close (struct inode *inode, struct file *file);
 static ssize_t vf_read(struct file *file, char __user *buf, size_t count, loff_t *ppos);
 static ssize_t vf_write(struct file *file, const char __user *buf, size_t count, loff_t *ppos);
+static int vf_mmap(struct file *file, struct vm_area_struct *vma);
 
 static struct file_operations vf_fops = {
-//	.open	= vf_open,
-//	.release= vf_close,
+	.open	= vf_open,
+	.release= vf_close,
 	.read	= vf_read,
 	.write	= vf_write,
+	.mmap	= vf_mmap,
 };
 
 static ssize_t vf_read(struct file *file, char __user *buf, size_t count, loff_t *ppos){
@@ -76,15 +78,24 @@ static ssize_t vf_write(struct file *file, const char __user *buf, size_t count,
 	}
 }
 
-//static int vf_open (struct inode *inode, struct file *file) {
-//	printk(KERN_INFO "vf opened\n\r");
-//	return 0;
-//}
+static int vf_open(struct inode *inode, struct file *file) {
+	printk(KERN_INFO "vf opened\n\r");
+	return 0;
+}
 
-//static int vf_close (struct inode *inode, struct file *file) {
-//	printk(KERN_INFO "vf closed\n\r");
-//	return 0;
-//}
+static int vf_close(struct inode *inode, struct file *file) {
+	printk(KERN_INFO "vf closed\n\r");
+	return 0;
+}
+
+static int vf_mmap(struct file *file, struct vm_area_struct *vma) {
+	int size;
+	size = vma->vm_end - vma->vm_start;
+
+	if (remap_pfn_range(vma, vma->vm_start, VF_PHYS >> PAGE_SHIFT, size, vma->vm_page_prot)) return -EAGAIN;
+
+	return 0;
+}
 
 static int __init vf_init (void) {
 	int err;
