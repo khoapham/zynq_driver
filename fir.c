@@ -21,9 +21,9 @@
 
 int main(int argc, char **argv) {
     int fd, i;
-    void *map_base0, *map_base1;
-    int *conf, *src, *dst, *stat, *ctrl, *cnt, *addr;  //*virt_addr; 
-	unsigned long read_result, writeval;
+    int *map_base0, *map_base1;
+    int *conf, *src, *dst, *stat, *ctrl, *cnt, *addr;  //void *map_base, *virt_addr; 
+//	unsigned long read_result, writeval;
 //	off_t target;
 //	int access_type = 'w';
 	
@@ -46,7 +46,7 @@ int main(int argc, char **argv) {
     
     /* Map one page of bram 0*/
     map_base0 = mmap(0, MAP_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, fd, BRAM0_PHYS & ~MAP_MASK);
-    if(map_base0 == (void *) -1) FATAL;
+    if(map_base0 == (int *) -1) FATAL;
     printf("Memory 0 mapped at address %p.\n", map_base0); 
     fflush(stdout);
     
@@ -58,7 +58,7 @@ int main(int argc, char **argv) {
 
     /* Map one page of bram 1*/
     map_base1 = mmap(0, MAP_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, fd, BRAM1_PHYS & ~MAP_MASK);
-    if(map_base1 == (void *) -1) FATAL;
+    if(map_base1 == (int *) -1) FATAL;
     printf("Memory 1 mapped at address %p.\n", map_base1); 
     fflush(stdout);
 
