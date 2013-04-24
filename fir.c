@@ -20,9 +20,10 @@
 #define BRAM1_PHYS 0x80410000
 
 int main(int argc, char **argv) {
-    int fd;
-    void *map_base0, *map_base1, *ctrl, *cnt, *addr, *conf, *src, *stat, *dst;  //*virt_addr; 
-//	unsigned long read_result, writeval;
+    int fd, i;
+    void *map_base0, *map_base1;
+    int *conf, *src, *dst, *stat, *ctrl, *cnt, *addr;  //*virt_addr; 
+	unsigned long read_result, writeval;
 //	off_t target;
 //	int access_type = 'w';
 	
@@ -63,6 +64,40 @@ int main(int argc, char **argv) {
 
     stat= map_base1 + (BRAM0_PHYS & MAP_MASK);
     dst = map_base1 + (BRAM0_PHYS & MAP_MASK) + 0x100;
+
+	printf("Hello world from vf!\n");
+	for(i=0;i<40;i++) src[i]=i+0x01;
+
+	conf[0]=0x07b5a000;
+	conf[1]=0x00000005;
+	conf[2]=0x00000000;
+	conf[3]=0x07b5a000;
+	conf[4]=0x00000007;
+	conf[5]=0x00000000;
+	conf[6]=0x07b5e000;
+	conf[7]=0x00000005;
+	conf[8]=0x00000000;
+	conf[9]=0x07b52000;
+	conf[10]=0x00000007;
+	conf[11]=0x00000000;
+
+	conf[12]=0xffffffff;
+	conf[13]=0x00678000;
+	conf[14]=0xffffffff;
+	conf[15]=0x00678000;
+	conf[16]=0x00000345;
+	conf[17]=0xffffffff;
+	conf[18]=0x00678000;
+	conf[19]=0xffffffff;
+	conf[20]=0x00678000;
+	conf[21]=0xffffffff;
+
+	*addr=0x01000100;
+	*ctrl=0x0000802d;
+	
+	while(*stat!=0x1);
+	for(i=0;i<40;i++) printf("c[%d]=%d, d[%d]=%d\n\r", i, src[i], i, (dst[i] >> 16));
+	*stat=0;
 //    virt_addr = map_base + (VF_PHYS & MAP_MASK);
 //    switch(access_type) {
 //		case 'b':
