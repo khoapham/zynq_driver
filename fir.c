@@ -102,6 +102,7 @@ int main(int argc, char **argv) {
 	*addr=0x01000100;
 	*ctrl=0x0000802d;
 	
+	while(*stat!=0x0) printf("status is %x\n\r", *stat);
 	while(*stat!=0x1) printf("status is %x\n\r", *stat);
 	for(i=0;i<40;i++) printf("c[%d]=%d, d[%d]=%d\n\r", i, src[i], i, (dst[i] >> 16));
 	for(i=0;i<22;i++) printf("conf[%d] = 0x%x\n\r", i, conf[i]);
