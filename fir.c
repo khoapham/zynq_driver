@@ -56,6 +56,11 @@ int main(int argc, char **argv) {
     conf= map_base0 + (BRAM0_PHYS & MAP_MASK) + 0xc;
     src = map_base0 + (BRAM0_PHYS & MAP_MASK) + 0x100; 
 
+    printf("Control register mapped at address %p.\n", ctrl); 
+    printf("Counter mapped at address %p.\n", cnt); 
+    printf("Data address mapped at address %p.\n", addr); 
+    printf("Conf register mapped at address %p.\n", conf); 
+    printf("Source of data mapped at address %p.\n", src); 
     /* Map one page of bram 1*/
     map_base1 = mmap(0, MAP_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, fd, BRAM1_PHYS & ~MAP_MASK);
     if(map_base1 == (int *) -1) FATAL;
@@ -65,6 +70,8 @@ int main(int argc, char **argv) {
     stat= map_base1 + (BRAM1_PHYS & MAP_MASK);
     dst = map_base1 + (BRAM1_PHYS & MAP_MASK) + 0x100;
 
+    printf("Status register mapped at address %p.\n", stat); 
+    printf("Dest of data mapped at address %p.\n", dst); 
 	printf("Hello world from vf!\n");
 	for(i=0;i<40;i++) src[i]=i+0x01;
 
