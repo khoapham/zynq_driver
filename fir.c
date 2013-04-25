@@ -62,8 +62,8 @@ int main(int argc, char **argv) {
     printf("Memory 1 mapped at address %p.\n", map_base1); 
     fflush(stdout);
 
-    stat= map_base1 + (BRAM0_PHYS & MAP_MASK);
-    dst = map_base1 + (BRAM0_PHYS & MAP_MASK) + 0x100;
+    stat= map_base1 + (BRAM1_PHYS & MAP_MASK);
+    dst = map_base1 + (BRAM1_PHYS & MAP_MASK) + 0x100;
 
 	printf("Hello world from vf!\n");
 	for(i=0;i<40;i++) src[i]=i+0x01;
@@ -95,9 +95,9 @@ int main(int argc, char **argv) {
 	*addr=0x01000100;
 	*ctrl=0x0000802d;
 	
-	while(*stat!=0x1);
+	while(*stat!=0x1) printf("status is %x\n\r", *stat);
 	for(i=0;i<40;i++) printf("c[%d]=%d, d[%d]=%d\n\r", i, src[i], i, (dst[i] >> 16));
-	for(i=0;i<21;i++) printf("conf[%d] = 0x%x\n\r", i, conf[i]);
+	for(i=0;i<22;i++) printf("conf[%d] = 0x%x\n\r", i, conf[i]);
 	*stat=0;
 //    virt_addr = map_base + (VF_PHYS & MAP_MASK);
 //    switch(access_type) {
