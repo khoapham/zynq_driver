@@ -97,6 +97,7 @@ int main(int argc, char **argv) {
 	
 	while(*stat!=0x1);
 	for(i=0;i<40;i++) printf("c[%d]=%d, d[%d]=%d\n\r", i, src[i], i, (dst[i] >> 16));
+	for(i=0;i<21;i++) printf("conf[%d] = 0x%x", i, conf[i]);
 	*stat=0;
 //    virt_addr = map_base + (VF_PHYS & MAP_MASK);
 //    switch(access_type) {
