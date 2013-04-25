@@ -51,10 +51,10 @@ int main(int argc, char **argv) {
     fflush(stdout);
     
     ctrl= map_base0 + (BRAM0_PHYS & MAP_MASK);
-    cnt = map_base0 + (BRAM0_PHYS & MAP_MASK) + 0x4;
-    addr= map_base0 + (BRAM0_PHYS & MAP_MASK) + 0x8;
-    conf= map_base0 + (BRAM0_PHYS & MAP_MASK) + 0xc;
-    src = map_base0 + (BRAM0_PHYS & MAP_MASK) + 0x100; 
+    cnt = map_base0 + (BRAM0_PHYS & MAP_MASK) + 0x1;
+    addr= map_base0 + (BRAM0_PHYS & MAP_MASK) + 0x2;
+    conf= map_base0 + (BRAM0_PHYS & MAP_MASK) + 0x3;
+    src = map_base0 + (BRAM0_PHYS & MAP_MASK) + 0x40; 
 
     printf("Control register mapped at address %p.\n", ctrl); 
     printf("Counter mapped at address %p.\n", cnt); 
@@ -68,7 +68,7 @@ int main(int argc, char **argv) {
     fflush(stdout);
 
     stat= map_base1 + (BRAM1_PHYS & MAP_MASK);
-    dst = map_base1 + (BRAM1_PHYS & MAP_MASK) + 0x100;
+    dst = map_base1 + (BRAM1_PHYS & MAP_MASK) + 0x40;
 
     printf("Status register mapped at address %p.\n", stat); 
     printf("Dest of data mapped at address %p.\n", dst); 
