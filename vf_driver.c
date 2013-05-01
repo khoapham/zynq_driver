@@ -184,7 +184,9 @@ void vf_get_result(void) {
 	while(status != 0x0) printk(KERN_INFO "vf didn't start\n\r");
 	while(status != 0x1) printk(KERN_INFO "vf didn't finish\n\r");
 
-	ioread32_rep(dst, vf_buf, 40);	
+	printk(KERN_INFO"vf finished, ready to read the result\n\r");
+	ioread32_rep(dst, vf_buf, 40);
+	iowrite32(0x00000000, stat);	
 }
 
 static int __init vf_init (void) {
