@@ -133,6 +133,9 @@ void vf_conf_fir(void) {
 //	int bram0_base, bram1_base, ctrl, cnt, addr, conf, src, stat, dst;
 	bram0_base = ioremap(BRAM0_START, BRAM0_END - BRAM0_START);  //map the bram0 base
 	bram1_base = ioremap(BRAM1_START, BRAM1_END - BRAM1_START);  //map the bram1 base
+	printk(KERN_INFO"bram0: %x\n\r", (unsigned int)bram0_base);
+	printk(KERN_INFO"bram1: %x\n\r", (unsigned int)bram1_base);
+
 	ctrl = bram0_base;
 	cnt  = bram0_base + 0x1;
 	addr = bram0_base + 0x2;
