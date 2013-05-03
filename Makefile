@@ -1,6 +1,6 @@
-#obj-m += vf_driver.o
+obj-m += vf_driver.o
 #obj-m += test.o
-obj-m += simple.o
+#obj-m += simple.o
 #KVERSION = $(shell uname -r)
 
 all:

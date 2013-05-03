@@ -3,186 +3,234 @@
 #include <linux/sched.h>
 #include <linux/interrupt.h>
 #include <linux/errno.h>
-#include <linux/timer.h>
 #include <linux/delay.h>
-//#include <linux/config.h>
 #include <linux/mm.h>
 #include <linux/init.h>
 #include <linux/ioport.h>
+#include <linux/fs.h>
+#include <linux/module.h>
+#include <linux/kernel.h>
+#include <linux/cdev.h>
+#include <linux/slab.h>
 
 #include <asm/io.h>
 #include <asm/irq.h>
 #include <asm/system.h>
-//#include <asm/hardware.h>
 #include <asm/uaccess.h>
 
-#define VF_MAJOR 200
+#include "vfdev.h"
 
+#define BRAM0_START 0x80400000
+#define BRAM0_END   0x8040FFFF
+#define BRAM1_START 0x80410000
+#define BRAM1_END   0x8041FFFF
 
-void vf_vma_open (struct vm_area_struct *vma);
-void vf_vma_close (struct vm_area_struct *vma);
-static void vf_hardware_init (void);
-static int vf_mmap (struct file *file, struct vm_area_struct *vma);
+static void *vf_buf;
+static int *bram0_base, *bram1_base, *ctrl, *cnt, *addr, *conf, *src, *stat, *dst;
+static int vf_bufsize = 8192;
+
+static int vf_count = 1;
+static dev_t vf_dev = MKDEV(202, 128);
+
+static struct cdev vf_cdev;
+
 static int vf_open (struct inode *inode, struct file *file);
 static int vf_close (struct inode *inode, struct file *file);
-static int vf_read (struct file *file, char *buf, size_t count, loff_t *ppos);
-static int vf_write (struct file *file, const char *buf, size_t count, loff_t *ppos);
+static ssize_t vf_read(struct file *file, char __user *buf, size_t count, loff_t *ppos);
+static ssize_t vf_write(struct file *file, const char __user *buf, size_t count, loff_t *ppos);
+static int vf_mmap(struct file *file, struct vm_area_struct *vma);
+static long vf_ioctl(struct file *file, unsigned int ioctl_cmd, unsigned long ioctl_param);
+
+void vf_conf_fir(void);
+void vf_start(void);
+void vf_get_result(void);
 
 static struct file_operations vf_fops = {
-	open	= vf_open,
-	read	= vf_read,
-	write	= vf_write,
-	release	= vf_close,
-	mmap	= vf_mmap,
+	.open	= vf_open,
+	.release= vf_close,
+	.read	= vf_read,
+	.write	= vf_write,
+	.mmap	= vf_mmap,
+	.unlocked_ioctl	= vf_ioctl,
 };
 
-static struct vm_operations_struct vf_mmap_vm_ops = {
-	open	= vf_vma_open,
-	close	= vf_vma_close,
-};
+static ssize_t vf_read(struct file *file, char __user *buf, size_t count, loff_t *ppos){
+	int remaining_size, transfer_size;
 
-void vf_vma_open (struct vm_area_struct *vma) {
-	printk(KERN_INFO "VF VMA open, virt %lx, phys %lx\n\r", vma->vm_start, vma->vm_pgoff << PAGE_SHIFT);
+	remaining_size = vf_bufsize - (int)(*ppos); //bytes left to transfer
+
+	if (remaining_size == 0) { //all read, returning 0 (end of file)
+		return 0;
+	}
+
+	transfer_size = min_t(int, remaining_size, count);
+
+	if (copy_to_user(buf /*to*/, vf_buf + *ppos /*from*/, transfer_size)) {
+		return -EFAULT;
+	} else { //increase the position in the open file
+		*ppos += transfer_size;
+		return transfer_size;
+	}
 }
 
-void vf_vma_close (struct vm_area_struct *vma) {
-	printk(KERN_INFO "VF VMA close.\n\r");
+static ssize_t vf_write(struct file *file, const char __user *buf, size_t count, loff_t *ppos) {
+	int remaining_bytes;
+
+	remaining_bytes = vf_bufsize - (*ppos); //bytes not written yet in the device
+
+	if (count>remaining_bytes) { //can't write beyond the end of the device
+		return -EIO;
+	}
+
+	if (copy_from_user(vf_buf + *ppos /*to*/, buf /*from*/, count)) {
+		return -EFAULT;
+	} else { //increase the position in the open file
+		*ppos += count;
+		return count;
+	}
 }
 
-static int vf_mmap (struct file *file, struct vm_area_struct *vma) {
-	if (remap_pfn_range(vma, vma->vm_start, vma->vm_pgoff, vma->vm_end - vma->vm_start, vma->vm_page_prot))
-		return -EAGAIN;
-
-	vma->vm_ops = &vf_mmap_vm_ops;
-	vf_vma_open(vma);
-	return 0;
-}
-
-static void vf_hardware_init (void) {}
-//static void control () {}
-static int vf_open (struct inode *inode, struct file *file) {
+static int vf_open(struct inode *inode, struct file *file) {
 	printk(KERN_INFO "vf opened\n\r");
 	return 0;
 }
 
-static int vf_close (struct inode *inode, struct file *file) {
+static int vf_close(struct inode *inode, struct file *file) {
 	printk(KERN_INFO "vf closed\n\r");
 	return 0;
 }
-static int vf_read (struct file *file, char *buf, size_t count, loff_t *ppos) {
-	struct vf_dev *dev = file->private_data;
-	struct vf_qset *dptr;  // the first listitem
-	int quantum = dev->quantum, qset = dev->qset;
-	int itemsize= quantum * qset;  // how many bytes in the listitem
-	int item, s_pos, q_pos, rest;
-	ssize_t retval = 0;
 
-	if (down_interruptible(&dev->sem))
-		return -ERESTARTSYS;
-	if (*ppos >= dev->size)
-		goto out;
-	if (*ppos + count > dev->size)
-		count = dev->size - *ppos;
+static int vf_mmap(struct file *file, struct vm_area_struct *vma) {
+	int size;
+	size = vma->vm_end - vma->vm_start;
 
-//find listitem, qset index, and offset in the quantum
-	item = (long)*ppos/itemsize;
-	rest = (long)*ppos%itemsize;
-	s_pos = rest/quantum; q_pos = rest%quantum;
+	if (remap_pfn_range(vma, vma->vm_start, vma->vm_pgoff, size, vma->vm_page_prot)) return -EAGAIN;
 
-//follow the list up to the right position (defined elsewhere)
-	dptr = vf_follow(dev, item);
-
-	if (dptr == NULL || !dptr->data || !dptr->data[s_pos])
-		goto out;  // don't fill holes
-
-// read only up to the end of this quantum
-	if (count > quantum - q_pos)
-		count = quantum - q_pos;
-
-	if (copy_to_user(buf, dptr->data[s_pos]+q_pos, count)) {
-		retval = -EFAULT;
-		goto out;
-	}
-
-	*ppos += count;
-	retval = count;
-
-	out:
-		up(&dev->sem);
-		return retval;
+	return 0;
 }
 
-static int vf_write (struct file *file, const char *buf, size_t count, loff_t *ppos) {
-	struct vf_dev *dev = file->private_data;
-	struct vf_qset *dptr;
-	int quantum = dev->quantum, qset = dev->qset;
-	int itemsize= quantum * qset;
-	int item, s_pos, q_pos, rest;
-	ssize_t retval = -ENOMEM;  //value used in "goto out" statements
+static long vf_ioctl(struct file *file, unsigned int ioctl_cmd, unsigned long ioctl_param) {
 
-	if (down_interruptible(&dev->sem))
-		return -ERESTARTSYS;
-
-// find listitem, qset index & offset in the quantum
-	item = (long)*ppos/itemsize;
-	rest = (long)*ppos%itemsize;
-
-	s_pos= rest/quantum; q_pos= rest%quantum;
-
-//follow the list up to the right position
-	dptr = vf_follow(dev, item);
-	if (dptr == NULL)
-		goto out;
-	if (!dptr->data) {
-		dptr->data = kmalloc(qset * sizeof(char *), GFP_KERNEL);
-		if(!dprt->data)
-			goto out;
-		memset(dptr->data, 0, qset * sizeof(char *));
-	}
-	if(!dptr->data[s_pos]) {
-		dptr->data[s_pos] = kmalloc(quantum, GFP_KERNEL);
-		if(!dptr->data[s_pos])
-			goto out;
+	switch (ioctl_cmd) {
+	case VF_CONF_FIR:  // call for the configuration function
+		vf_conf_fir();
+		break;
+	case VF_START:     // call for start VF processing
+		vf_start();
+		break;
+	case VF_GET_RESULT:// read result from VF
+		vf_get_result();
+		break;
+	default: 
+		return -ENOTTY;
 	}
 
-//write only up to the end of this quantum
-	if (count > quantum - q_pos)
-		count = quantum - q_pos;
+	return 0;
+}
 
-	if(copy_from_user(dptr->data[s_pos]+q_pos, buf, count)) {
-		retval = -EFAULT;
-		goto out;
-	}
+void vf_conf_fir(void) {
+	int i;
+//	int bram0_base, bram1_base, ctrl, cnt, addr, conf, src, stat, dst;
+	bram0_base = ioremap(BRAM0_START, BRAM0_END - BRAM0_START);  //map the bram0 base
+	bram1_base = ioremap(BRAM1_START, BRAM1_END - BRAM1_START);  //map the bram1 base
+	ctrl = bram0_base;
+	cnt  = bram0_base + 0x1;
+	addr = bram0_base + 0x2;
+	conf = bram0_base + 0x3;
+	src  = bram0_base + 0x40;
 
-	*ppos += count;
-	retval = count;
+	stat = bram1_base;
+	dst  = bram1_base + 0x40;
 
-//update the size
-	if (def->size < *ppos)
-		def_size = *ppos;
+	for(i=0;i<40;i++) src[i]=i+0x01;
 
-	out:
-		up(&dev->sem);
-		return retval;
+	iowrite32(0x07b5a000, conf[0]);
+	iowrite32(0x00000005, conf[1]);
+	iowrite32(0x00000000, conf[2]);
+	iowrite32(0x07b5a000, conf[3]);
+	iowrite32(0x00000007, conf[4]);
+	iowrite32(0x00000000, conf[5]);
+	iowrite32(0x07b5e000, conf[6]);
+	iowrite32(0x00000005, conf[7]);
+	iowrite32(0x00000000, conf[8]);
+	iowrite32(0x07b52000, conf[9]);
+	iowrite32(0x00000007, conf[10]);
+	iowrite32(0x00000000, conf[11]);
+
+	iowrite32(0xffffffff, conf[12]);
+	iowrite32(0x00678000, conf[13]);
+	iowrite32(0xffffffff, conf[14]);
+	iowrite32(0x00678000, conf[15]);
+	iowrite32(0x00000345, conf[16]);
+	iowrite32(0xffffffff, conf[17]);
+	iowrite32(0x00678000, conf[18]);
+	iowrite32(0xffffffff, conf[19]);
+	iowrite32(0x00678000, conf[20]);
+	iowrite32(0xffffffff, conf[21]);
+	wmb();
+}
+
+void vf_start(void) {
+	iowrite32(0x01000100, addr);
+	iowrite32(0x0000802d, ctrl);
+	wmb();
+}
+
+void vf_get_result(void) {
+	int status;
+
+	status = ioread32(stat);
+
+	while(status != 0x0) printk(KERN_INFO "vf didn't start\n\r");
+	while(status != 0x1) printk(KERN_INFO "vf didn't finish\n\r");
+
+	printk(KERN_INFO"vf finished, ready to read the result\n\r");
+	ioread32_rep(dst, vf_buf, 40);
+	iowrite32(0x00000000, stat);	
 }
 
 static int __init vf_init (void) {
-	vf_hardware_init();
-	printk(KERN_INFO "Registering the vf\n\r");
-	if(register_chrdev(VF_MAJOR, "vfdriver", &vf_fops)){
-		printk(KERN_INFO "register the vf-driver error\n\r");
-		goto fail_register_chrdev;
+	int err;
+
+//	vf_buf = ioremap(VF_PHYS, vf_bufsize);
+	vf_buf = kmalloc(vf_bufsize, GFP_KERNEL);
+	if (!vf_buf) {
+		err = -ENOMEM;
+		goto err_exit;
 	}
+
+	printk(KERN_INFO "Registering the vf\n\r");
+	if (register_chrdev_region(vf_dev, vf_count, "vf-driver")) {
+		printk(KERN_INFO "register the vf-driver error\n\r");
+		err = -ENODEV;
+		goto err_free_buf;
+	}
+
+	cdev_init(&vf_cdev, &vf_fops);
+
+	if (cdev_add(&vf_cdev, vf_dev, vf_count)) {
+		printk(KERN_INFO "add the vf-driver character device error\n\r");
+		err = -ENODEV;
+		goto err_dev_unregister;
+	}
+
 	printk(KERN_INFO "vf-driver was registered\n\r");
 	return 0;
 
-	fail_register_chrdev:
+	err_dev_unregister:
+		unregister_chrdev_region(vf_dev, vf_count);
+	err_free_buf:
 		printk(KERN_INFO "FAIL to register vf-driver\n\r");
-		return 0;
+		iounmap(vf_buf);
+	err_exit:
+		return err;
 }
 
 static void __exit vf_cleanup (void) {
-	unregister_chrdev(VF_MAJOR, "vfdriver");
+	cdev_del(&vf_cdev);
+	unregister_chrdev_region(vf_dev, vf_count);
+	iounmap(bram0_base);
+	iounmap(bram1_base);
 	return;
 }
 
