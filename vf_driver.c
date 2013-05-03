@@ -145,38 +145,38 @@ void vf_conf_fir(void) {
 	stat = bram1_base;
 	dst  = bram1_base + 0x40;
 
-	for(i=0;i<40;i++) src[i]=i+0x01;
+//	for(i=0;i<40;i++) src[i]=i+0x01;
 
-	iowrite32(0x07b5a000, conf[0]);
-	iowrite32(0x00000005, conf[1]);
-	iowrite32(0x00000000, conf[2]);
-	iowrite32(0x07b5a000, conf[3]);
-	iowrite32(0x00000007, conf[4]);
-	iowrite32(0x00000000, conf[5]);
-	iowrite32(0x07b5e000, conf[6]);
-	iowrite32(0x00000005, conf[7]);
-	iowrite32(0x00000000, conf[8]);
-	iowrite32(0x07b52000, conf[9]);
-	iowrite32(0x00000007, conf[10]);
-	iowrite32(0x00000000, conf[11]);
-
-	iowrite32(0xffffffff, conf[12]);
-	iowrite32(0x00678000, conf[13]);
-	iowrite32(0xffffffff, conf[14]);
-	iowrite32(0x00678000, conf[15]);
-	iowrite32(0x00000345, conf[16]);
-	iowrite32(0xffffffff, conf[17]);
-	iowrite32(0x00678000, conf[18]);
-	iowrite32(0xffffffff, conf[19]);
-	iowrite32(0x00678000, conf[20]);
-	iowrite32(0xffffffff, conf[21]);
-	wmb();
+//	iowrite32(0x07b5a000, conf[0]);
+//	iowrite32(0x00000005, conf[1]);
+//	iowrite32(0x00000000, conf[2]);
+//	iowrite32(0x07b5a000, conf[3]);
+//	iowrite32(0x00000007, conf[4]);
+//	iowrite32(0x00000000, conf[5]);
+//	iowrite32(0x07b5e000, conf[6]);
+//	iowrite32(0x00000005, conf[7]);
+//	iowrite32(0x00000000, conf[8]);
+//	iowrite32(0x07b52000, conf[9]);
+//	iowrite32(0x00000007, conf[10]);
+//	iowrite32(0x00000000, conf[11]);
+//
+//	iowrite32(0xffffffff, conf[12]);
+//	iowrite32(0x00678000, conf[13]);
+//	iowrite32(0xffffffff, conf[14]);
+//	iowrite32(0x00678000, conf[15]);
+//	iowrite32(0x00000345, conf[16]);
+//	iowrite32(0xffffffff, conf[17]);
+//	iowrite32(0x00678000, conf[18]);
+//	iowrite32(0xffffffff, conf[19]);
+//	iowrite32(0x00678000, conf[20]);
+//	iowrite32(0xffffffff, conf[21]);
+//	wmb();
 }
 
 void vf_start(void) {
-	iowrite32(0x01000100, addr);
-	iowrite32(0x0000802d, ctrl);
-	wmb();
+//	iowrite32(0x01000100, addr);
+//	iowrite32(0x0000802d, ctrl);
+//	wmb();
 }
 
 void vf_get_result(void) {
@@ -189,7 +189,7 @@ void vf_get_result(void) {
 
 	printk(KERN_INFO"vf finished, ready to read the result\n\r");
 	ioread32_rep(dst, vf_buf, 40);
-	iowrite32(0x00000000, stat);	
+//	iowrite32(0x00000000, stat);	
 }
 
 static int __init vf_init (void) {
