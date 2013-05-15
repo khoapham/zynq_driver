@@ -15,175 +15,188 @@
 #define FATAL do { fprintf(stderr, "Error at line %d, file %s (%d) [%s]\n", \
   __LINE__, __FILE__, errno, strerror(errno)); exit(1); } while(0)
  
-//#define MAP_SIZE 4096UL
-//#define MAP_MASK (MAP_SIZE - 1)
-//
-//#define BRAM0_PHYS 0x80400000
-//#define BRAM1_PHYS 0x80410000
+static int databuf[500], fd;
+void vf_data_input(int num_data);
+void vf_conf_fir(int num_conf);
+
+void vf_conf_fir(int num_conf) {
+	int ret_val;
+
+      databuf[0]=0x07b5a000;
+      databuf[1]=0x00000005;
+      databuf[2]=0x00000000;
+      databuf[3]=0x07b5a000;
+      databuf[4]=0x00000007;
+      databuf[5]=0x00000000;
+      databuf[6]=0x07b5e000;
+      databuf[7]=0x00000005;
+      databuf[8]=0x00000000;
+      databuf[9]=0x07b52000;
+      databuf[10]=0x00000007;
+      databuf[11]=0x00000000;
+
+      databuf[12]=0xffffffff;
+      databuf[13]=0x00678000;
+      databuf[14]=0xffffffff;
+      databuf[15]=0x00678000;
+      databuf[16]=0x00000345;
+      databuf[17]=0xffffffff;
+      databuf[18]=0x00678000;
+      databuf[19]=0xffffffff;
+      databuf[20]=0x00678000;
+      databuf[21]=0xffffffff;
+
+	ret_val = write(fd, (char *)databuf, num_conf*4);
+	if (ret_val < 0) {
+		printf("fail to write configuration data to vf\n\r");
+		exit(-1);
+	}
+
+	ret_val = ioctl(fd, VF_CONF_FIR, (long)num_conf);
+        if (ret_val < 0) {
+                printf("ioctl to configure FIR is failed: %d\n", ret_val);
+                exit(-1);
+        }
+}
+
+void vf_data_input(int num_data) {
+	int i, ret_val;
+
+      for(i=0;i<num_data;i++) databuf[i]=i+0x01;
+
+        ret_val = write(fd, (char *)databuf, num_data*4);
+        if (ret_val < 0) {
+                printf("fail to write input data to vf\n\r");
+                exit(-1);
+        }
+
+        ret_val = ioctl(fd, VF_DATA_INPUT, (long)num_data);
+        if (ret_val < 0) {
+                printf("ioctl to input data is failed: %d\n", ret_val);
+                exit(-1);
+        }
+}
+
+int vf_status(void) {
+	int ret_val;
+        ret_val = ioctl(fd, VF_GET_STAT, 0);
+        if (ret_val < 0) {
+                printf("ioctl to read status is failed: %d\n", ret_val);
+                exit(-1);
+        }
+
+        ret_val = read(fd, (char *)databuf, 4);
+        if (ret_val < 0) {
+                printf("read status is failed: %d\n", ret_val);
+                exit(-1);
+        }
+	return databuf[0];
+}
 
 int main(int argc, char **argv) {
-    int fd, i, ret_val;
-    char databuf[50];
-//    int *map_base0, *map_base1;
-//    int *conf, *src, *dst, *stat, *ctrl, *cnt, *addr;  //void *map_base, *virt_addr; 
-//	unsigned long read_result, writeval;
-//	off_t target;
-//	int access_type = 'w';
-	
-//	if(argc < 2) {
-//		fprintf(stderr, "\nUsage:\t%s { address } [ type [ data ] ]\n"
-//			"\taddress : memory address to act upon\n"
-//			"\ttype    : access operation type : [b]yte, [h]alfword, [w]ord\n"
-//			"\tdata    : data to be written\n\n",
-//			argv[0]);
-//		exit(1);
-//	}
-//	target = strtoul(argv[1], 0, 0);
-//
-//	if(argc > 2)
-//		access_type = tolower(argv[2][0]);
+    int i, ret_val, stat, j;
+    int num_data, num_conf;
 
+	num_data = 32;
+	num_conf = 22;
 // Open the vf driver
     
     if((fd = open("/dev/vf-driver", O_RDWR | O_SYNC)) == -1) FATAL;
     printf("/dev/vf-driver opened.\n"); 
     fflush(stdout);
     
-//    /* Map one page of bram 0*/
-//    map_base0 = mmap(0, MAP_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, fd, BRAM0_PHYS & ~MAP_MASK);
-//    if(map_base0 == (int *) -1) FATAL;
-//    printf("Memory 0 mapped at address %p.\n", map_base0); 
-//    fflush(stdout);
-//    
-//    ctrl= map_base0 + (BRAM0_PHYS & MAP_MASK);
-//    cnt = map_base0 + (BRAM0_PHYS & MAP_MASK) + 0x1;
-//    addr= map_base0 + (BRAM0_PHYS & MAP_MASK) + 0x2;
-//    conf= map_base0 + (BRAM0_PHYS & MAP_MASK) + 0x3;
-//    src = map_base0 + (BRAM0_PHYS & MAP_MASK) + 0x40; 
-//
-//    printf("Control register mapped at address %p.\n", ctrl); 
-//    printf("Counter mapped at address %p.\n", cnt); 
-//    printf("Data address mapped at address %p.\n", addr); 
-//    printf("Conf register mapped at address %p.\n", conf); 
-//    printf("Source of data mapped at address %p.\n", src); 
-//    /* Map one page of bram 1*/
-//    map_base1 = mmap(0, MAP_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, fd, BRAM1_PHYS & ~MAP_MASK);
-//    if(map_base1 == (int *) -1) FATAL;
-//    printf("Memory 1 mapped at address %p.\n", map_base1); 
-//    fflush(stdout);
-//
-//    stat= map_base1 + (BRAM1_PHYS & MAP_MASK);
-//    dst = map_base1 + (BRAM1_PHYS & MAP_MASK) + 0x40;
-//
-//    printf("Status register mapped at address %p.\n", stat); 
-//    printf("Dest of data mapped at address %p.\n", dst); 
-//	printf("Hello world from vf!\n");
-//	for(i=0;i<40;i++) src[i]=i+0x01;
-//
-//	conf[0]=0x07b5a000;
-//	conf[1]=0x00000005;
-//	conf[2]=0x00000000;
-//	conf[3]=0x07b5a000;
-//	conf[4]=0x00000007;
-//	conf[5]=0x00000000;
-//	conf[6]=0x07b5e000;
-//	conf[7]=0x00000005;
-//	conf[8]=0x00000000;
-//	conf[9]=0x07b52000;
-//	conf[10]=0x00000007;
-//	conf[11]=0x00000000;
-//
-//	conf[12]=0xffffffff;
-//	conf[13]=0x00678000;
-//	conf[14]=0xffffffff;
-//	conf[15]=0x00678000;
-//	conf[16]=0x00000345;
-//	conf[17]=0xffffffff;
-//	conf[18]=0x00678000;
-//	conf[19]=0xffffffff;
-//	conf[20]=0x00678000;
-//	conf[21]=0xffffffff;
-
+//for(j=0;j<20;j++) {
+while(1) {
 // Configure the FIR function for the vf
+	vf_conf_fir(num_conf);
+	vf_data_input(num_data);
 
-	ret_val = ioctl(fd, VF_CONF_FIR, 0);
-	if (ret_val < 0) {
-		printf("ioctl to configure FIR is failed: %d\n", ret_val);
-		exit(-1);
-	}
+// Read the counter
 
-//	*addr=0x01000100;
-//	*ctrl=0x0000802d;
+        ret_val = ioctl(fd, VF_GET_CNT, 0);
+        if (ret_val < 0) {
+                printf("ioctl to read counter is failed: %d\n", ret_val);
+                exit(-1);
+        }
 
+	ret_val = read(fd, (char *)databuf, 4);
+        if (ret_val < 0) {
+                printf("read counter is failed: %d\n", ret_val);
+                exit(-1);
+        }
+
+	printf("cnt %d\n\r", databuf[0]);
 // Start the vf
 	
-        ret_val = ioctl(fd, VF_START, 0);
+        ret_val = ioctl(fd, VF_START, (long)num_data);
         if (ret_val < 0) {
                 printf("ioctl to start VF is failed: %d\n", ret_val);
 		exit(-1);
         }
-	
-//	while(*stat!=0x0) printf("status is %x\n\r", *stat);
-//	while(*stat!=0x1) printf("status is %x\n\r", *stat);
-//	for(i=0;i<40;i++) printf("c[%d]=%d, d[%d]=%d\n\r", i, src[i], i, (dst[i] >> 16));
-//	for(i=0;i<22;i++) printf("conf[%d] = 0x%x\n\r", i, conf[i]);
-//	*stat=0;
 
+// Read the counter
+
+//        ret_val = ioctl(fd, VF_GET_CNT, 0);
+//        if (ret_val < 0) {
+//                printf("ioctl to read counter is failed: %d\n", ret_val);
+//                exit(-1);
+//        }
+//
+//        ret_val = read(fd, (char *)databuf, 4);
+//        if (ret_val < 0) {
+//                printf("read counter is failed: %d\n", ret_val);
+//                exit(-1);
+//        }
+//
+//        printf("cnt %d\n\r", databuf[0]);
+
+// Read the status
+//	ret_val = ioctl(fd, VF_GET_STAT, (long)num_data);
+//        if (ret_val < 0) {
+//                printf("ioctl to read status is failed: %d\n", ret_val);
+//                exit(-1);
+//        }
+//	
+//	ret_val = read(fd, (char *)databuf, 4);
+//        if (ret_val < 0) {
+//                printf("read status is failed: %d\n", ret_val);
+//                exit(-1);
+//        }
+	stat = vf_status();
+//	while(stat[0] != 0x0) printf("vf haven't started yet\n\r");
+	while(stat != 0x1) {
+//		printf("vf haven't finished yet\n\r");
+//		ret_val = ioctl(fd, VF_GET_STAT, (long)num_data);
+//        	if (ret_val < 0) {
+//                	printf("ioctl to read status is failed: %d\n", ret_val);
+//	                exit(-1);
+//        	}
+//
+//		ret_val = read(fd, (char *)databuf, 4);
+//        	if (ret_val < 0) {
+//	                printf("read status is failed: %d\n", ret_val);
+//                	exit(-1);
+//        	}
+	        stat = vf_status();
+	}
+//	printf("stat is %x\n\r", stat);
+	
 // Read the result
 
-	ret_val = ioctl(fd, VF_GET_RESULT, 0);
+	ret_val = ioctl(fd, VF_GET_RESULT, (long)num_data);
         if (ret_val < 0) {
                 printf("ioctl to read result is failed: %d\n", ret_val);
 		exit(-1);
         }
 
-	ret_val = read(fd, databuf, 40);
+	ret_val = read(fd, (char *)databuf, num_data*4);
 	if (ret_val < 0) {
                 printf("read result is failed: %d\n", ret_val);
 		exit(-1);
         }
 
-	for(i=0;i<40;i++) printf("result[%d]: %d\n\r", i, (unsigned int)databuf[i] >> 16);
-//    virt_addr = map_base + (VF_PHYS & MAP_MASK);
-//    switch(access_type) {
-//		case 'b':
-//			read_result = *((unsigned char *) virt_addr);
-//			break;
-//		case 'h':
-//			read_result = *((unsigned short *) virt_addr);
-//			break;
-//		case 'w':
-//			read_result = *((unsigned long *) virt_addr);
-//			break;
-//		default:
-//			fprintf(stderr, "Illegal data type '%c'.\n", access_type);
-//			exit(2);
-//	}
-//    printf("Value at address 0x%X (%p): 0x%X\n", target, virt_addr, read_result); 
-//    fflush(stdout);
-//
-//	if(argc > 3) {
-//		writeval = strtoul(argv[3], 0, 0);
-//		switch(access_type) {
-//			case 'b':
-//				*((unsigned char *) virt_addr) = writeval;
-//				read_result = *((unsigned char *) virt_addr);
-//				break;
-//			case 'h':
-//				*((unsigned short *) virt_addr) = writeval;
-//				read_result = *((unsigned short *) virt_addr);
-//				break;
-//			case 'w':
-//				*((unsigned long *) virt_addr) = writeval;
-//				read_result = *((unsigned long *) virt_addr);
-//				break;
-//		}
-//		printf("Written 0x%X; readback 0x%X\n", writeval, read_result); 
-//		fflush(stdout);
-//	}
-	
-//	if(munmap(map_base0, MAP_SIZE) == -1) FATAL;
-//	if(munmap(map_base1, MAP_SIZE) == -1) FATAL;
+//	for(i=0;i<num_data;i++) printf("[%d]: %x\n\r", i, databuf[i]);
+}
     close(fd);
     return 0;
 }
